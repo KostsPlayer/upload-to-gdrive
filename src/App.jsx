@@ -13,6 +13,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [folderId, setFolderId] = useState(null);
   const [folderName, setFolderName] = useState("");
+  const [isFolderCreated, setIsFolderCreated] = useState(false);
 
   useEffect(() => {
     const loadGapi = () => {
@@ -62,6 +63,8 @@ function App() {
   const handleSignOutClick = () => {
     gapi.client.setToken("");
     setIsAuthorized(false);
+    setFolderId(null);
+    setIsFolderCreated(false);
   };
 
   const handleFileChange = (e) => {
@@ -72,6 +75,25 @@ function App() {
     setFolderName(e.target.value);
   };
 
+  const checkFolderExists = async () => {
+    try {
+      const response = await gapi.client.drive.files.list({
+        q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: "files(id, name)",
+      });
+
+      if (response.result.files && response.result.files.length > 0) {
+        setFolderId(response.result.files[0].id);
+        setIsFolderCreated(true);
+        alert(`Folder "${folderName}" already exists.`);
+      } else {
+        createFolder();
+      }
+    } catch (error) {
+      console.error("Error checking folder:", error);
+    }
+  };
+
   const createFolder = async () => {
     if (!folderName) {
       alert("Please enter a folder name.");
@@ -79,7 +101,7 @@ function App() {
     }
 
     const folderMetadata = {
-      name: folderName, // Menggunakan nama folder dari input
+      name: folderName,
       mimeType: "application/vnd.google-apps.folder",
     };
 
@@ -89,7 +111,7 @@ function App() {
         fields: "id",
       });
       setFolderId(response.result.id);
-      console.log("Folder ID:", response.result.id);
+      setIsFolderCreated(true);
       alert(`Folder "${folderName}" created successfully!`);
     } catch (error) {
       console.error("Error creating folder:", error);
@@ -100,7 +122,7 @@ function App() {
   const uploadFile = async () => {
     if (!selectedFile || !isAuthorized || !folderId) {
       alert(
-        "Please ensure you are authorized, have selected a file, and have created a folder."
+        "Please ensure you are authorized, have selected a file, and have created or selected a folder."
       );
       return;
     }
@@ -108,7 +130,7 @@ function App() {
     const metadata = {
       name: selectedFile.name,
       mimeType: selectedFile.type,
-      parents: [folderId], // Mengunggah ke folder yang baru dibuat
+      parents: [folderId], // Mengunggah ke folder yang baru dibuat atau dipilih
     };
 
     const form = new FormData();
@@ -150,9 +172,11 @@ function App() {
               value={folderName}
               onChange={handleFolderNameChange}
             />
-            <button onClick={createFolder}>Create Folder</button>
+            <button onClick={checkFolderExists}>Create or Check Folder</button>
             <input type="file" onChange={handleFileChange} accept=".pdf" />
-            <button onClick={uploadFile}>Upload to Google Drive</button>
+            <button onClick={uploadFile} disabled={!isFolderCreated}>
+              Upload to Google Drive
+            </button>
           </>
         ) : (
           <button onClick={handleAuthClick}>Authorize</button>
