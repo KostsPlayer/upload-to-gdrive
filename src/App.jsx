@@ -12,6 +12,7 @@ function App() {
   const [tokenClient, setTokenClient] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [folderId, setFolderId] = useState(null);
+  const [folderName, setFolderName] = useState("");
 
   useEffect(() => {
     const loadGapi = () => {
@@ -67,9 +68,18 @@ function App() {
     setSelectedFile(e.target.files[0]);
   };
 
+  const handleFolderNameChange = (e) => {
+    setFolderName(e.target.value);
+  };
+
   const createFolder = async () => {
+    if (!folderName) {
+      alert("Please enter a folder name.");
+      return;
+    }
+
     const folderMetadata = {
-      name: "New Folder", // Ganti dengan nama folder yang diinginkan
+      name: folderName, // Menggunakan nama folder dari input
       mimeType: "application/vnd.google-apps.folder",
     };
 
@@ -80,7 +90,7 @@ function App() {
       });
       setFolderId(response.result.id);
       console.log("Folder ID:", response.result.id);
-      alert("Folder created successfully!");
+      alert(`Folder "${folderName}" created successfully!`);
     } catch (error) {
       console.error("Error creating folder:", error);
       alert("Error creating folder.");
@@ -88,12 +98,17 @@ function App() {
   };
 
   const uploadFile = async () => {
-    if (!selectedFile || !isAuthorized) return;
+    if (!selectedFile || !isAuthorized || !folderId) {
+      alert(
+        "Please ensure you are authorized, have selected a file, and have created a folder."
+      );
+      return;
+    }
 
     const metadata = {
       name: selectedFile.name,
       mimeType: selectedFile.type,
-      parents: folderId ? [folderId] : [], // Mengunggah ke folder yang dibuat
+      parents: [folderId], // Mengunggah ke folder yang baru dibuat
     };
 
     const form = new FormData();
@@ -129,6 +144,12 @@ function App() {
         isAuthorized ? (
           <>
             <button onClick={handleSignOutClick}>Sign Out</button>
+            <input
+              type="text"
+              placeholder="Enter folder name"
+              value={folderName}
+              onChange={handleFolderNameChange}
+            />
             <button onClick={createFolder}>Create Folder</button>
             <input type="file" onChange={handleFileChange} accept=".pdf" />
             <button onClick={uploadFile}>Upload to Google Drive</button>
