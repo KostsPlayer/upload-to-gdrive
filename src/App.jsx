@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest";
+const DISCOVERY_DOC =
+  "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest";
 const SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [tokenClient, setTokenClient] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [folderId, setFolderId] = useState(null);
 
   useEffect(() => {
     const loadGapi = () => {
@@ -65,12 +67,33 @@ function App() {
     setSelectedFile(e.target.files[0]);
   };
 
+  const createFolder = async () => {
+    const folderMetadata = {
+      name: "New Folder", // Ganti dengan nama folder yang diinginkan
+      mimeType: "application/vnd.google-apps.folder",
+    };
+
+    try {
+      const response = await gapi.client.drive.files.create({
+        resource: folderMetadata,
+        fields: "id",
+      });
+      setFolderId(response.result.id);
+      console.log("Folder ID:", response.result.id);
+      alert("Folder created successfully!");
+    } catch (error) {
+      console.error("Error creating folder:", error);
+      alert("Error creating folder.");
+    }
+  };
+
   const uploadFile = async () => {
     if (!selectedFile || !isAuthorized) return;
 
     const metadata = {
       name: selectedFile.name,
       mimeType: selectedFile.type,
+      parents: folderId ? [folderId] : [], // Mengunggah ke folder yang dibuat
     };
 
     const form = new FormData();
@@ -106,6 +129,7 @@ function App() {
         isAuthorized ? (
           <>
             <button onClick={handleSignOutClick}>Sign Out</button>
+            <button onClick={createFolder}>Create Folder</button>
             <input type="file" onChange={handleFileChange} accept=".pdf" />
             <button onClick={uploadFile}>Upload to Google Drive</button>
           </>
